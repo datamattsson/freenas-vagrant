@@ -2,8 +2,10 @@
 Source files to build a FreeNAS 9.10 Vagrant box
 
 This box is distributed to Atlas, please use vagrant directly to install it:
+
     vagrant init drajen/freenas9 && vagrant up
 
+# Building
 If you want to build your own custom box for the vagrant virtualbox provider, please follow these instructions:
 
 Download an .iso from http://download.freenas.org/
