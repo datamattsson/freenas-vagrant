@@ -22,7 +22,8 @@ Register the vbox and attach the .iso via the UI:
 
     vboxmanage registervm $(pwd)/freenas-template/freenas-template.vbox
 
-Answer all the prompts and set the root password to 'root'
+Boot it up and answer all the prompts with their default values. Set the root password to 'vagrant'.
+
 Power the machine off and unregister the VM: (before this step it could be useful to snapshot the machine to get back to this known state quickly)
 
     vboxmanage controlvm $(pwd)/freenas-template/freenas-template.vbox
