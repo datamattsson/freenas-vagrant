@@ -13,7 +13,7 @@ git clone this repo:
 
 Untar'gz the template:
 
-tar xzvf freenas-template.tar.gz
+    tar xzvf freenas-template.tar.gz
 
 Register the vbox and attach the .iso via the UI:
 
@@ -25,7 +25,7 @@ Power the machine off and unregister the VM: (before this step it could be usefu
     vboxmanage controlvm $(pwd)/freenas-template/freenas-template.vbox
     vboxmanage unregistervm $(pwd)/freenas-template/freenas-template.vbox
 
-Use Ansible to prep the box
+Use Ansible to prep the box:
 
     ansible-playbook -i inventory.ini prep.yml
 
