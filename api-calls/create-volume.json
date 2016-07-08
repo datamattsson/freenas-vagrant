@@ -1,0 +1,9 @@
+{
+    "volume_name": "tank",
+    "layout": [
+         {
+	     "vdevtype": "stripe",
+	     "disks": [ "ada1", "ada2" ] 
+	 }
+    ]
+}

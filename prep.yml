@@ -1,0 +1,153 @@
+#
+# Copyright (c) 2016, Michael Mattsson
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of resthome nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+---
+
+- hosts: localhost
+  vars_files:
+    - vars_local.yml
+  
+  tasks: 
+    # The freenas-template machine must be a vanilla installed FreeNAS 9 VM 
+    # with root password of 'vagrant'. Please use the provided .vbox as a 
+    # starting point as it has all the customizations done
+
+  - name: Register FreeNAS VM
+    command: "vboxmanage registervm {{ ansible_env.PWD }}/freenas-template/freenas-template.vbox"
+
+  - name: Boot it up
+    shell: "vboxheadless -s freenas-template &"
+
+  - name: Waiting for box to come up
+    uri:
+        url: http://localhost:8080/api/v1.0/
+        method: GET
+        user: "root"
+        password: "vagrant"
+        force_basic_auth: yes
+        status_code: 200
+    register: uri_resp
+    until: uri_resp.status == 200
+    retries: 250
+    delay: 10
+
+  - name: Create volume (zpool)
+    uri:
+        url: http://localhost:8080/api/v1.0/storage/volume/
+        method: POST
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/create-volume.json') }}"
+        force_basic_auth: yes
+        status_code: 201
+        body_format: json
+
+  - name: Create home dir dataset
+    uri:
+        url: http://localhost:8080/api/v1.0/storage/volume/tank/datasets/
+        method: POST
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/create-homedir.json') }}"
+        force_basic_auth: yes
+        status_code: 201
+        body_format: json
+
+  - name: Enable sshd
+    uri:
+        url: http://localhost:8080/api/v1.0/services/services/ssh/
+        method: PUT
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/enable-sshd.json') }}"
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+
+  - name: Permit root login
+    uri:
+        url: http://localhost:8080/api/v1.0/services/ssh/
+        method: PUT
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/update-sshd.json') }}"
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+
+  - name: Add vagrant user
+    uri:
+        url: http://localhost:8080/api/v1.0/account/users/
+        method: POST
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/create-user.json') }}"
+        force_basic_auth: yes
+        status_code: 201
+        body_format: json
+
+  - name: Add sshpubkey to root user
+    uri:
+        url: http://localhost:8080/api/v1.0/account/users/1/
+        method: PUT
+        user: "root"
+        password: "vagrant"
+        body: "{{ lookup('file','api-calls/root-sshpubkey.json') }}"
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+
+- hosts: freenas
+  vars_files:
+    - vars_local.yml
+  tasks:
+  - name: Enable passwordless sudo
+    lineinfile: "dest=/conf/base/etc/local/sudoers line='vagrant ALL=(ALL) NOPASSWD: ALL'"
+
+  - name: Shutdown
+    command: poweroff
+
+- hosts: localhost
+  vars_files:
+    - vars_local.yml
+  
+  tasks: 
+  - name: Wait for VM to poweroff
+    command: vboxmanage showvminfo freenas-template --machinereadable
+    register: machine_data
+    until: machine_data.stdout.find('VMState="poweroff"') != -1
+    retries: 10
+    delay: 10
+  
+  - name: Box it up 
+    command: "vagrant package --vagrantfile Vagrantfile --base freenas-template"
+
+  - name: Un-register FreeNAS VM
+    command: "vboxmanage unregistervm {{ ansible_env.PWD }}/freenas-template/freenas-template.vbox"
