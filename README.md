@@ -7,6 +7,7 @@ This box is distributed to Atlas, please use vagrant directly to install it:
 If you want to build your own custom box for the vagrant virtualbox provider, please follow these instructions:
 
 Download an .iso from http://download.freenas.org/
+
 git clone this repo:
 
     git clone https://github.com/drajen/freenas-vagrant
